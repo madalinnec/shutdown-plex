@@ -1,0 +1,12 @@
+[Unit]
+Description=Shutdown Idle Plex Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/shutdown-idle-plex.sh
+User=root
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
