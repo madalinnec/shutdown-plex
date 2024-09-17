@@ -1,3 +1,5 @@
+!! THE CHANGES ON THIS BRANCH WERE NOT VERIFIED AGAINST A SERVER RUNNING A STEAM CMD SERVER !!
+
 For Ubuntu Server (verified on 22.04.5 LTS)
 
 This sets up a service that verifies whether qbittorrent-nox is currently downloading or if plex is streaming. If not, the server will shut down in 20 minutes.

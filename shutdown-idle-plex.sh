@@ -10,6 +10,10 @@ QBITTORRENT_USER="your_qbittorrent_username" # qBittorrent Web UI username
 QBITTORRENT_PASSWORD="your_qbittorrent_password" # qBittorrent Web UI password
 QBITTORRENT_API_URL="http://$QBITTORRENT_IP:$QBITTORRENT_PORT/api/v2/transfer/info"
 
+# SteamCMD server details
+STEAM_SERVER_IP="127.0.0.1" # IP of the SteamCMD server
+STEAM_SERVER_PORT="27015" # Port for the SteamCMD server
+
 # Define the maximum download speed (in bytes/second). 1 Mbps = 125000 Bytes/s.
 MAX_DOWNLOAD_SPEED=125000
 
@@ -64,7 +68,21 @@ check_qbittorrent_download_speed() {
   fi
 }
 
-# Infinite loop to check both Plex playback status and qBittorrent download speed every minute
+# Function to check if there are any active players on the SteamCMD server
+check_steamcmd_players() {
+  # Use netstat or ss to check if there are established connections on the Steam server's port
+  active_players=$(netstat -an | grep "$STEAM_SERVER_PORT" | grep ESTABLISHED | wc -l)
+
+  if [ "$active_players" -gt 0 ]; then
+    echo "There are active players on the SteamCMD server."
+    return 0
+  else
+    echo "No active players on the SteamCMD server."
+    return 1
+  fi
+}
+
+# Infinite loop to check Plex playback, qBittorrent download speed, and SteamCMD players every minute
 while true; do
   # Check if Plex Media Server is running
   if ! systemctl is-active --quiet plexmediaserver; then
@@ -78,20 +96,26 @@ while true; do
     exit 1
   fi
 
-  # Check if any media is being played on Plex and if qBittorrent is downloading at more than 1 Mbps
-  if check_playback || check_qbittorrent_download_speed; then
-    echo "Either Plex is playing or qBittorrent is downloading. Shutdown aborted."
+  # Check if SteamCMD server is running
+  if ! systemctl is-active --quiet steamcmd-server; then
+    echo "SteamCMD server is not running."
+    exit 1
+  fi
+
+  # Check if any media is being played on Plex, if qBittorrent is downloading at more than 1 Mbps, or if there are active players on SteamCMD
+  if check_playback || check_qbittorrent_download_speed || check_steamcmd_players; then
+    echo "Either Plex is playing, qBittorrent is downloading, or there are active SteamCMD players. Shutdown aborted."
   else
-    echo "No playback on Plex and qBittorrent download is below 1 Mbps. Server will shut down in 20 minutes if no change."
+    echo "No playback on Plex, qBittorrent download is below 1 Mbps, and no active SteamCMD players. Server will shut down in 20 minutes if no change."
 
     # Wait for 20 minutes (1200 seconds)
     sleep 1200
 
     # Check again after 20 minutes
-    if check_playback || check_qbittorrent_download_speed; then
+    if check_playback || check_qbittorrent_download_speed || check_steamcmd_players; then
       echo "Conditions changed. Shutdown aborted."
     else
-      echo "No playback on Plex and no significant download on qBittorrent after 20 minutes. Shutting down server."
+      echo "No playback on Plex, no significant download on qBittorrent, and no active SteamCMD players after 20 minutes. Shutting down server."
       shutdown -h now
     fi
   fi
