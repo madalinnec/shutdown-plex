@@ -17,7 +17,7 @@ MAX_DOWNLOAD_SPEED=125000
 COOKIE_FILE=$(mktemp)
 
 # Function to check active Plex playback sessions
-check_playback() {
+video_is_playing() {
   local plex_api_url="http://$PLEX_IP:32400/status/sessions?X-Plex-Token=$PLEX_TOKEN"
   local playback=$(curl -s "$plex_api_url" | grep -o '<Player.*state="playing"')
   if [ -n "$playback" ]; then
@@ -46,7 +46,7 @@ authenticate_qbittorrent() {
 }
 
 # Function to check qBittorrent download speed
-check_qbittorrent_download_speed() {
+qbittorrent_is_downloading() {
   # Re-authenticate before checking download speed, in case the session has expired
   if ! authenticate_qbittorrent; then
     return 1
@@ -79,7 +79,7 @@ while true; do
   fi
 
   # Check if any media is being played on Plex and if qBittorrent is downloading at more than 1 Mbps
-  if check_playback && check_qbittorrent_download_speed; then
+  if video_is_playing || qbittorrent_is_downloading; then
     echo "Either Plex is playing or qBittorrent is downloading. Shutdown aborted."
   else
     echo "No playback on Plex and qBittorrent download is below 1 Mbps. Server will shut down in 20 minutes if no change."
@@ -88,7 +88,7 @@ while true; do
     sleep 1200
 
     # Check again after 20 minutes
-    if check_playback && check_qbittorrent_download_speed; then
+    if video_is_playing || qbittorrent_is_downloading; then
       echo "Conditions changed. Shutdown aborted."
     else
       echo "No playback on Plex and no significant download on qBittorrent after 20 minutes. Shutting down server."
